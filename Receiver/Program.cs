@@ -9,6 +9,7 @@ namespace Sender
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
     using Microsoft.Azure.ServiceBus.Management;
+    using Serilog;
 
     class Program
     {
@@ -57,11 +58,17 @@ namespace Sender
             receiver.PrefetchCount = 0;
             var sender = new MessageSender(connection, Constants.TopicName, Constants.ReceiverQueueName);
 
+            var log = new LoggerConfiguration()
+                .WriteTo.Console()
+                .WriteTo.RollingFile("log-{Date}.txt")
+                .CreateLogger();
+
+
             while (true)
             {
                 var incoming = await receiver.ReceiveAsync();
 
-                //log.Info($"Received FooEvent with ID {incoming.MessageId}, sleeping 30ms to simulate normal usage");
+                log.Information("Received FooEvent with ID {ID}, sleeping 30ms to simulate normal usage", incoming.MessageId);
 
                 using (var tx = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
@@ -76,19 +83,34 @@ namespace Sender
                         Label = $"BarEvent #{x}"
                     });
 
-                    var tasks = new List<Task>(numberOfEventsToPublish);
-                    tasks.AddRange(events.Select(@event => sender.SendAsync(@event)));
+                    try
+                    {
+                        var tasks = new List<Task>(numberOfEventsToPublish);
+                        tasks.AddRange(events.Select(@event => sender.SendAsync(@event)));
 
-                    await Task.WhenAll(tasks).ConfigureAwait(false);
+                        await Task.WhenAll(tasks).ConfigureAwait(false);
 
-                    await receiver.CompleteAsync(incoming.SystemProperties.LockToken);
+                        await receiver.CompleteAsync(incoming.SystemProperties.LockToken);
 
-                    tx.Complete();
+                        tx.Complete();
 
-                    //log.Info($"Published {numberOfEventsToPublish} BarEvent events.");
+                        log.Information($"Published {numberOfEventsToPublish} BarEvent events.");
+                    }
+                    catch (Exception exception)
+                    {
+                        log.Error(exception, "Handler failed");
+
+                        try
+                        {
+                            await receiver.AbandonAsync(incoming.SystemProperties.LockToken);
+                        }
+                        catch (Exception e)
+                        {
+                            log.Debug(e, "Failed to complete message with ID {ID}", incoming.MessageId);
+                        }
+                    }
                 }
             }
         }
     }
-
 }
