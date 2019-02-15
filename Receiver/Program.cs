@@ -4,15 +4,23 @@ namespace Sender
 {
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
     using Microsoft.Azure.ServiceBus.Management;
     using Serilog;
+    using Serilog.Core;
+    using Constants = Constants;
 
     class Program
     {
+        private static Logger log;
+        private static MessageSenderPool sendersPool;
+        private static MessageReceiver receiver;
+        private static SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+
         static async Task Main(string[] args)
         {
             var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
@@ -53,12 +61,12 @@ namespace Sender
 
             await client.CloseAsync();
 
-            var connection = new ServiceBusConnection(connectionString);
-            var receiver = new MessageReceiver(connection, Constants.ReceiverQueueName, ReceiveMode.PeekLock);
+            receiver = new MessageReceiver(connectionString, Constants.ReceiverQueueName, ReceiveMode.PeekLock);
             receiver.PrefetchCount = 0;
-            var sender = new MessageSender(connection, Constants.TopicName, Constants.ReceiverQueueName);
+            var connectionStringBuilder = new ServiceBusConnectionStringBuilder(connectionString);
+            sendersPool = new MessageSenderPool(connectionStringBuilder, null);
 
-            var log = new LoggerConfiguration()
+            log = new LoggerConfiguration()
                 .WriteTo.Console()
                 .WriteTo.RollingFile("log-{Date}.txt")
                 .CreateLogger();
@@ -66,49 +74,72 @@ namespace Sender
 
             while (true)
             {
-                var incoming = await receiver.ReceiveAsync();
+                await semaphore.WaitAsync();
 
-                log.Information("Received FooEvent with ID {ID}, sleeping 30ms to simulate normal usage", incoming.MessageId);
+                var receiveTask = receiver.ReceiveAsync();
 
-                using (var tx = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
-                {
-
-                    await Task.Delay(30);
-
-                    var numberOfEventsToPublish = 10;
-
-                    var events = Enumerable.Range(1, numberOfEventsToPublish).Select(x => new Message
+                ProcessMessage(receiveTask)
+                    .ContinueWith((t, s) =>
                     {
-                        MessageId = Guid.NewGuid().ToString(),
-                        Label = $"BarEvent #{x}"
-                    });
+                        ((SemaphoreSlim) s).Release();
+                    }, semaphore, TaskContinuationOptions.ExecuteSynchronously).Ignore();
+            }
+        }
+
+        private static async Task ProcessMessage(Task<Message> receiveTask)
+        {
+            var incoming = await receiveTask;
+
+            if (incoming == null)
+            {
+                return;
+            }
+
+            log.Information("Received FooEvent with ID {ID}, sleeping 30ms to simulate normal usage", incoming.MessageId);
+
+            await Task.Delay(30);
+
+            using (var tx = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                const int numberOfEventsToPublish = 10;
+
+                var events = Enumerable.Range(1, numberOfEventsToPublish).Select(x => new Message
+                {
+                    MessageId = Guid.NewGuid().ToString(),
+                    Label = $"BarEvent #{x}"
+                });
+
+                var sender = sendersPool.GetMessageSender(Constants.TopicName, (receiver.ServiceBusConnection, receiver.Path));
+
+                try
+                {
+                    var tasks = new List<Task>(numberOfEventsToPublish);
+                    tasks.AddRange(events.Select(@event => sender.SendAsync(@event)));
+
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
+
+                    await receiver.CompleteAsync(incoming.SystemProperties.LockToken);
+
+                    tx.Complete();
+
+                    log.Information($"Published {numberOfEventsToPublish} BarEvent events.");
+                }
+                catch (Exception exception)
+                {
+                    log.Error(exception, "Handler failed");
 
                     try
                     {
-                        var tasks = new List<Task>(numberOfEventsToPublish);
-                        tasks.AddRange(events.Select(@event => sender.SendAsync(@event)));
-
-                        await Task.WhenAll(tasks).ConfigureAwait(false);
-
-                        await receiver.CompleteAsync(incoming.SystemProperties.LockToken);
-
-                        tx.Complete();
-
-                        log.Information($"Published {numberOfEventsToPublish} BarEvent events.");
+                        await receiver.AbandonAsync(incoming.SystemProperties.LockToken);
                     }
-                    catch (Exception exception)
+                    catch (Exception e)
                     {
-                        log.Error(exception, "Handler failed");
-
-                        try
-                        {
-                            await receiver.AbandonAsync(incoming.SystemProperties.LockToken);
-                        }
-                        catch (Exception e)
-                        {
-                            log.Debug(e, "Failed to complete message with ID {ID}", incoming.MessageId);
-                        }
+                        log.Debug(e, "Failed to complete message with ID {ID}", incoming.MessageId);
                     }
+                }
+                finally
+                {
+                    sendersPool.ReturnMessageSender(sender);
                 }
             }
         }
