@@ -19,7 +19,8 @@ namespace Sender
         private static Logger log;
         private static MessageSenderPool sendersPool;
         private static MessageReceiver receiver;
-        private static SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+        private const int MaxConcurrency = 1;
+        private static SemaphoreSlim semaphore = new SemaphoreSlim(MaxConcurrency, MaxConcurrency);
 
         static async Task Main(string[] args)
         {
