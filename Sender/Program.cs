@@ -30,10 +30,10 @@ namespace Sender
             var events = Enumerable.Range(1, numberOfMessages).Select(x => new Message
             {
                 MessageId = Guid.NewGuid().ToString(),
-                Label = $"FooEvent #{x}"
+                Label = $"FooMessage #{x}"
             });
 
-            var sender = new MessageSender(connectionString, Constants.TopicName);
+            var sender = new MessageSender(connectionString, Constants.ReceiverQueueName);
 
             var tasks = events.Select(e => sender.SendAsync(e));
 

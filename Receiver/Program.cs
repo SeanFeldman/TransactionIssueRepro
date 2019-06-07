@@ -19,7 +19,7 @@ namespace Sender
         private static Logger log;
         private static MessageSenderPool sendersPool;
         private static MessageReceiver receiver;
-        private const int MaxConcurrency = 1;
+        private const int MaxConcurrency = 10;
         private static SemaphoreSlim semaphore = new SemaphoreSlim(MaxConcurrency, MaxConcurrency);
 
         static async Task Main(string[] args)
@@ -96,12 +96,12 @@ namespace Sender
                 return;
             }
 
-            log.Information("Received FooEvent with ID {ID}, sleeping 30ms to simulate normal usage", incoming.MessageId);
+            log.Information("Received FooMessage with ID {ID}, sleeping 30ms to simulate normal usage", incoming.MessageId);
 
-            await Task.Delay(30);
-
-            using (var tx = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            using (var tx = CreateTransactionScope())
             {
+                await Task.Delay(30);
+
                 const int numberOfEventsToPublish = 10;
 
                 var events = Enumerable.Range(1, numberOfEventsToPublish).Select(x => new Message
@@ -143,6 +143,15 @@ namespace Sender
                     sendersPool.ReturnMessageSender(sender);
                 }
             }
+        }
+
+        static TransactionScope CreateTransactionScope()
+        {
+            return new TransactionScope(TransactionScopeOption.RequiresNew, new TransactionOptions
+            {
+                IsolationLevel = IsolationLevel.Serializable,
+                Timeout = TransactionManager.MaximumTimeout
+            }, TransactionScopeAsyncFlowOption.Enabled);
         }
     }
 }
