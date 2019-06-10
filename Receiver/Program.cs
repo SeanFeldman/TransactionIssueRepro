@@ -88,6 +88,9 @@ namespace Sender
 
         private static async Task ProcessMessage(Task<Message> receiveTask)
         {
+            const int numberOfEventsToPublish = 10;
+            IEnumerable<Message> events;
+
             var incoming = await receiveTask;
 
             if (incoming == null)
@@ -99,15 +102,18 @@ namespace Sender
 
             using (var tx = CreateTransactionScope())
             {
-                await Task.Delay(30);
-
-                const int numberOfEventsToPublish = 10;
-
-                var events = Enumerable.Range(1, numberOfEventsToPublish).Select(x => new Message
+                using (var suppress = new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    MessageId = Guid.NewGuid().ToString(),
-                    Label = $"BarEvent #{x}"
-                });
+                    await Task.Delay(30);
+
+                    events = Enumerable.Range(1, numberOfEventsToPublish).Select(x => new Message
+                    {
+                        MessageId = Guid.NewGuid().ToString(),
+                        Label = $"BarEvent #{x}"
+                    });
+
+                    suppress.Complete();
+                }
 
                 var sender = sendersPool.GetMessageSender(Constants.TopicName, (receiver.ServiceBusConnection, receiver.Path));
 
@@ -141,6 +147,7 @@ namespace Sender
                 {
                     sendersPool.ReturnMessageSender(sender);
                 }
+
             }
         }
 
