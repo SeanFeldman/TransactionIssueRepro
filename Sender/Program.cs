@@ -16,13 +16,15 @@ namespace Sender
 
             var client = new ManagementClient(connectionString);
 
-            if (! await client.TopicExistsAsync(Constants.TopicName))
+            if (!await client.QueueExistsAsync(Constants.ReceiverQueueName).ConfigureAwait(false))
             {
-                await client.CreateTopicAsync(new TopicDescription(Constants.TopicName)
+                await client.CreateQueueAsync(new QueueDescription(Constants.ReceiverQueueName)
                 {
+                    MaxDeliveryCount = int.MaxValue,
+                    LockDuration = TimeSpan.FromMinutes(5),
                     MaxSizeInMB = 5 * 1024,
                     EnableBatchedOperations = true
-                });
+                }).ConfigureAwait(false);
             }
 
             var numberOfMessages = 2000;
