@@ -62,8 +62,7 @@ namespace Sender
 
             await client.CloseAsync();
 
-            receiver = new MessageReceiver(connectionString, Constants.ReceiverQueueName, ReceiveMode.PeekLock);
-            receiver.PrefetchCount = 0;
+            receiver = new MessageReceiver(connectionString, Constants.ReceiverQueueName, ReceiveMode.PeekLock, default, 0);
             var connectionStringBuilder = new ServiceBusConnectionStringBuilder(connectionString);
             sendersPool = new MessageSenderPool(connectionStringBuilder, null);
 
