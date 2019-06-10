@@ -1,15 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26124.0
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28922.388
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{EAB84B25-D7EE-4FE2-B30D-68E44C3DD3B9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DummyHandler", "src\DummyHandler\DummyHandler.csproj", "{9B80460C-B94B-43CB-9FCB-172D1ED0C15B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DummyHandler", "src\DummyHandler\DummyHandler.csproj", "{9B80460C-B94B-43CB-9FCB-172D1ED0C15B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DummyMessages", "src\DummyMessages\DummyMessages.csproj", "{0F89A288-A361-4E28-98B3-94D538D755FA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DummyMessages", "src\DummyMessages\DummyMessages.csproj", "{0F89A288-A361-4E28-98B3-94D538D755FA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DummySender", "src\DummySender\DummySender.csproj", "{4D168614-803B-483F-8628-60CAC610377E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DummySender", "src\DummySender\DummySender.csproj", "{4D168614-803B-483F-8628-60CAC610377E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NsbRawReproduction", "..\NsbRawReproduction\NsbRawReproduction.csproj", "{2B7320C8-9704-4E13-B803-3ECC2478A2E0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,9 +21,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{9B80460C-B94B-43CB-9FCB-172D1ED0C15B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -60,10 +59,29 @@ Global
 		{4D168614-803B-483F-8628-60CAC610377E}.Release|x64.Build.0 = Release|Any CPU
 		{4D168614-803B-483F-8628-60CAC610377E}.Release|x86.ActiveCfg = Release|Any CPU
 		{4D168614-803B-483F-8628-60CAC610377E}.Release|x86.Build.0 = Release|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Debug|x64.Build.0 = Debug|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Debug|x86.Build.0 = Debug|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Release|x64.ActiveCfg = Release|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Release|x64.Build.0 = Release|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Release|x86.ActiveCfg = Release|Any CPU
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{9B80460C-B94B-43CB-9FCB-172D1ED0C15B} = {EAB84B25-D7EE-4FE2-B30D-68E44C3DD3B9}
 		{0F89A288-A361-4E28-98B3-94D538D755FA} = {EAB84B25-D7EE-4FE2-B30D-68E44C3DD3B9}
 		{4D168614-803B-483F-8628-60CAC610377E} = {EAB84B25-D7EE-4FE2-B30D-68E44C3DD3B9}
+		{2B7320C8-9704-4E13-B803-3ECC2478A2E0} = {EAB84B25-D7EE-4FE2-B30D-68E44C3DD3B9}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3E5EF27F-19B3-4F28-B59C-B7303691143F}
 	EndGlobalSection
 EndGlobal
