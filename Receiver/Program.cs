@@ -26,41 +26,7 @@ namespace Sender
         {
             var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
 
-            var client = new ManagementClient(connectionString);
-
-            if (!await client.TopicExistsAsync(Constants.TopicName))
-            {
-                throw new Exception($"Topic '{Constants.TopicName}' should be created first and seeded.");
-            }
-
-            if (!await client.QueueExistsAsync(Constants.ReceiverQueueName))
-            {
-                await client.CreateQueueAsync(new QueueDescription(Constants.ReceiverQueueName)
-                {
-                    MaxDeliveryCount = int.MaxValue,
-                    LockDuration = TimeSpan.FromMinutes(5),
-                    MaxSizeInMB = 5 * 1024,
-                    EnableBatchedOperations = true
-                });
-            }
-
-            if (!await client.SubscriptionExistsAsync(Constants.TopicName, Constants.SubscriptionName))
-            {
-
-                var subscription = new SubscriptionDescription(Constants.TopicName, Constants.SubscriptionName)
-                {
-                    EnableBatchedOperations = true,
-                    MaxDeliveryCount = int.MaxValue,
-                    ForwardTo = Constants.ReceiverQueueName
-                };
-
-                var rule = new RuleDescription(Constants.ReceiverQueueName,
-                    new SqlFilter("sys.Label LIKE 'FooEvent%'"));
-
-                await client.CreateSubscriptionAsync(subscription, rule);
-            }
-
-            await client.CloseAsync();
+            await CreateInfrastructure(connectionString).ConfigureAwait(false);
 
             receiver = new MessageReceiver(connectionString, Constants.ReceiverQueueName, ReceiveMode.PeekLock, default, 0);
             var connectionStringBuilder = new ServiceBusConnectionStringBuilder(connectionString);
@@ -74,7 +40,7 @@ namespace Sender
 
             while (true)
             {
-                await semaphore.WaitAsync();
+                await semaphore.WaitAsync().ConfigureAwait(false);
 
                 var receiveTask = receiver.ReceiveAsync();
 
@@ -86,10 +52,46 @@ namespace Sender
             }
         }
 
+        static async Task CreateInfrastructure(string connectionString)
+        {
+            var client = new ManagementClient(connectionString);
+
+            if (!await client.TopicExistsAsync(Constants.TopicName).ConfigureAwait(false))
+            {
+                throw new Exception($"Topic '{Constants.TopicName}' should be created first and seeded.");
+            }
+
+            if (!await client.QueueExistsAsync(Constants.ReceiverQueueName).ConfigureAwait(false))
+            {
+                await client.CreateQueueAsync(new QueueDescription(Constants.ReceiverQueueName)
+                {
+                    MaxDeliveryCount = int.MaxValue,
+                    LockDuration = TimeSpan.FromMinutes(5),
+                    MaxSizeInMB = 5 * 1024,
+                    EnableBatchedOperations = true
+                }).ConfigureAwait(false);
+            }
+
+            if (!await client.SubscriptionExistsAsync(Constants.TopicName, Constants.SubscriptionName).ConfigureAwait(false))
+            {
+                var subscription = new SubscriptionDescription(Constants.TopicName, Constants.SubscriptionName)
+                {
+                    EnableBatchedOperations = true,
+                    MaxDeliveryCount = int.MaxValue,
+                    ForwardTo = Constants.ReceiverQueueName
+                };
+
+                var rule = new RuleDescription(Constants.ReceiverQueueName, new SqlFilter("sys.Label LIKE 'FooEvent%'"));
+
+                await client.CreateSubscriptionAsync(subscription, rule).ConfigureAwait(false);
+            }
+
+            await client.CloseAsync().ConfigureAwait(false);
+        }
+
         private static async Task ProcessMessage(Task<Message> receiveTask)
         {
             const int numberOfEventsToPublish = 10;
-            IEnumerable<Message> events;
 
             var incoming = await receiveTask;
 
@@ -102,9 +104,11 @@ namespace Sender
 
             using (var tx = CreateTransactionScope())
             {
+                IEnumerable<Message> events;
+
                 using (var suppress = new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    await Task.Delay(30);
+                    await Task.Delay(30).ConfigureAwait(false);
 
                     events = Enumerable.Range(1, numberOfEventsToPublish).Select(x => new Message
                     {
@@ -124,7 +128,7 @@ namespace Sender
 
                     await Task.WhenAll(tasks).ConfigureAwait(false);
 
-                    await receiver.CompleteAsync(incoming.SystemProperties.LockToken);
+                    await receiver.CompleteAsync(incoming.SystemProperties.LockToken).ConfigureAwait(false);
 
                     tx.Complete();
 
@@ -136,7 +140,7 @@ namespace Sender
 
                     try
                     {
-                        await receiver.AbandonAsync(incoming.SystemProperties.LockToken);
+                        await receiver.AbandonAsync(incoming.SystemProperties.LockToken).ConfigureAwait(false);
                     }
                     catch (Exception e)
                     {
