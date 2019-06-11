@@ -19,7 +19,7 @@ namespace Sender
         private static Logger log;
         private static MessageSenderPool sendersPool;
         private static MessageReceiver receiver;
-        private const int MaxConcurrency = 10;
+        private const int MaxConcurrency = 2;
         private static SemaphoreSlim semaphore = new SemaphoreSlim(MaxConcurrency, MaxConcurrency);
 
         static async Task Main(string[] args)
@@ -106,7 +106,7 @@ namespace Sender
             {
                 try
                 {
-                    await Handler(numberOfEventsToPublish, incoming).ConfigureAwait(false);
+                    await Dispatch(numberOfEventsToPublish).ConfigureAwait(false);
 
                     await receiver.CompleteAsync(incoming.SystemProperties.LockToken).ConfigureAwait(false);
 
@@ -128,19 +128,11 @@ namespace Sender
             }
         }
 
-        private static async Task Handler(int numberOfEventsToPublish, Message incoming)
-        {
-            // handler
-            await Task.Delay(30).ConfigureAwait(false);
-
-            await Dispatch(numberOfEventsToPublish).ConfigureAwait(false);
-        }
-
         private static Task Dispatch(int numberOfEventsToPublish)
         {
             var tasks = new List<Task>(numberOfEventsToPublish);
 
-            for (int i = 0; i < numberOfEventsToPublish; i++)
+            for (var i = 0; i < numberOfEventsToPublish; i++)
             {
                 var sender = sendersPool.GetMessageSender(Constants.TopicName, (receiver.ServiceBusConnection, receiver.Path));
 
