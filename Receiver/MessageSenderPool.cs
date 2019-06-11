@@ -1,5 +1,6 @@
 ﻿namespace Sender
 {
+    using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Threading.Tasks;
@@ -27,6 +28,7 @@
                 if (receiverConnectionAndPath != (null, null))
                 {
                     sender = new MessageSender(receiverConnectionAndPath.connection, destination, receiverConnectionAndPath.path);
+                    Console.WriteLine($"!!!!!!!!!!!!!!!!!!!! {sender.ClientId} !!!!!!!!!!!!!!!!!!!!");
                 }
                 else
                 {

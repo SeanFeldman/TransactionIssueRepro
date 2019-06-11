@@ -104,39 +104,17 @@ namespace Sender
 
             using (var tx = CreateTransactionScope())
             {
-                IEnumerable<Message> events;
-
-                using (var suppress = new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled))
-                {
-                    await Task.Delay(30).ConfigureAwait(false);
-
-                    events = Enumerable.Range(1, numberOfEventsToPublish).Select(x => new Message
-                    {
-                        MessageId = Guid.NewGuid().ToString(),
-                        Label = $"BarEvent #{x}"
-                    });
-
-                    suppress.Complete();
-                }
-
-                var sender = sendersPool.GetMessageSender(Constants.TopicName, (receiver.ServiceBusConnection, receiver.Path));
-
                 try
                 {
-                    var tasks = new List<Task>(numberOfEventsToPublish);
-                    tasks.AddRange(events.Select(@event => sender.SendAsync(@event)));
-
-                    await Task.WhenAll(tasks).ConfigureAwait(false);
+                    await Handler(numberOfEventsToPublish, incoming).ConfigureAwait(false);
 
                     await receiver.CompleteAsync(incoming.SystemProperties.LockToken).ConfigureAwait(false);
 
                     tx.Complete();
-
-                    log.Information($"Published {numberOfEventsToPublish} BarEvent events.");
                 }
                 catch (Exception exception)
                 {
-                    log.Error(exception, "Handler failed");
+                    log.Error(exception, "Failed processing the incoming message");
 
                     try
                     {
@@ -147,12 +125,45 @@ namespace Sender
                         log.Debug(e, "Failed to complete message with ID {ID}", incoming.MessageId);
                     }
                 }
+            }
+        }
+
+        private static async Task Handler(int numberOfEventsToPublish, Message incoming)
+        {
+            // handler
+            await Task.Delay(30).ConfigureAwait(false);
+
+            await Dispatch(numberOfEventsToPublish).ConfigureAwait(false);
+        }
+
+        private static Task Dispatch(int numberOfEventsToPublish)
+        {
+            var tasks = new List<Task>(numberOfEventsToPublish);
+
+            for (int i = 0; i < numberOfEventsToPublish; i++)
+            {
+                var sender = sendersPool.GetMessageSender(Constants.TopicName, (receiver.ServiceBusConnection, receiver.Path));
+
+                try
+                {
+                    var @event = new Message
+                    {
+                        MessageId = Guid.NewGuid().ToString(),
+                        Label = $"BarEvent #{i}"
+                    };
+
+                    log.Information($"Sending a message using sender with client ID={sender.ClientId}");
+                    tasks.Add(sender.SendAsync(@event));
+                }
                 finally
                 {
                     sendersPool.ReturnMessageSender(sender);
                 }
-
             }
+
+            log.Information($"Publishing {numberOfEventsToPublish} BarEvent events.");
+
+            return Task.WhenAll(tasks);
         }
 
         static TransactionScope CreateTransactionScope()
