@@ -4,11 +4,15 @@
     using System.Collections.Concurrent;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
+    using Serilog.Core;
 
     class MessageSenderPool
     {
-        public MessageSenderPool()
+        private readonly Logger log;
+
+        public MessageSenderPool(Logger log)
         {
+            this.log = log;
             senders = new ConcurrentDictionary<(string, (ServiceBusConnection, string)), ConcurrentQueue<MessageSender>>();
         }
 
@@ -20,7 +24,7 @@
             {
                 // Send-Via case
                 sender = new MessageSender(receiverConnectionAndPath.connection, destination, receiverConnectionAndPath.path);
-                Console.WriteLine($"!!!!!!!!!!!!!!!!!!!! {sender.ClientId} !!!!!!!!!!!!!!!!!!!!");
+                log.Information($"Created a new MessageSender with client ID={sender.ClientId}");
             }
 
             return sender;

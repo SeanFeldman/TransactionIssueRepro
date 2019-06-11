@@ -24,16 +24,15 @@
         {
             var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
 
-            await CreateInfrastructure(connectionString).ConfigureAwait(false);
-
-            receiver = new MessageReceiver(connectionString, Constants.ReceiverQueueName, ReceiveMode.PeekLock, default, 0);
-            sendersPool = new MessageSenderPool();
-
             log = new LoggerConfiguration()
                 .WriteTo.Console()
                 .WriteTo.RollingFile("log-{Date}.txt")
                 .CreateLogger();
 
+            await CreateInfrastructure(connectionString).ConfigureAwait(false);
+
+            receiver = new MessageReceiver(connectionString, Constants.ReceiverQueueName, ReceiveMode.PeekLock, default, 0);
+            sendersPool = new MessageSenderPool(log);
 
             while (true)
             {
