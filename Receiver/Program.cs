@@ -1,9 +1,6 @@
-﻿using System;
-
-namespace Sender
+﻿namespace Sender
 {
     using System.Collections.Generic;
-    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
@@ -13,6 +10,7 @@ namespace Sender
     using Serilog;
     using Serilog.Core;
     using Constants = Constants;
+    using System;
 
     class Program
     {
@@ -29,8 +27,7 @@ namespace Sender
             await CreateInfrastructure(connectionString).ConfigureAwait(false);
 
             receiver = new MessageReceiver(connectionString, Constants.ReceiverQueueName, ReceiveMode.PeekLock, default, 0);
-            var connectionStringBuilder = new ServiceBusConnectionStringBuilder(connectionString);
-            sendersPool = new MessageSenderPool(connectionStringBuilder, null);
+            sendersPool = new MessageSenderPool();
 
             log = new LoggerConfiguration()
                 .WriteTo.Console()
