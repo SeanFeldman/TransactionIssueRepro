@@ -110,7 +110,7 @@
                 }
                 catch (Exception exception)
                 {
-                    log.Error(exception, "Failed processing the incoming message");
+                    log.Error(exception, "Failed processing the incoming message with ID {ID}", incoming.MessageId);
 
                     try
                     {
@@ -118,7 +118,7 @@
                     }
                     catch (Exception e)
                     {
-                        log.Debug(e, "Failed to complete message with ID {ID}", incoming.MessageId);
+                        log.Debug(e, "Failed to abandon message with ID {ID}", incoming.MessageId);
                     }
                 }
             }
